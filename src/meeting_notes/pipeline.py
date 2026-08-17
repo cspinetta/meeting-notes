@@ -40,6 +40,7 @@ from meeting_notes.transcript import (
 
 ProgressCallback = Callable[[str], None]
 FINGERPRINT_CHUNK_SIZE = 1024 * 1024
+TRANSCRIPTION_PROFILE_VERSION = 2
 
 
 SUMMARY_PROMPT = """# Meeting summary instructions
@@ -157,6 +158,7 @@ def build_resume_key(
     """Describe every input that can materially change transcript content."""
 
     return {
+        "transcription_profile_version": TRANSCRIPTION_PROFILE_VERSION,
         "input_fingerprint": fingerprint,
         "backend": backend.key,
         "model": backend.model,
@@ -400,6 +402,7 @@ def _initial_metadata(
         "audio_streams": _audio_stream_metadata(info),
         "transcription_duration_seconds": None,
         "tool_version": __version__,
+        "transcription_profile_version": TRANSCRIPTION_PROFILE_VERSION,
         "resume_key": resume_key,
     }
 

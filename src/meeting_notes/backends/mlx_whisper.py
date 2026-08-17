@@ -10,7 +10,10 @@ from typing import Any
 from meeting_notes.backends.base import (
     TranscriptionBackend,
     TranscriptionResult,
+    filter_near_silent_segments,
+    language_probe,
     normalize_segments,
+    whisper_decode_options,
 )
 from meeting_notes.errors import DependencyError, TranscriptionError
 
@@ -29,23 +32,31 @@ class MLXWhisperBackend(TranscriptionBackend):
                 "mlx-whisper is not installed. From the project root, run `uv sync`."
             ) from exc
 
-        kwargs: dict[str, object] = {
-            "path_or_hf_repo": self.spec.model,
-            "task": "transcribe",
-            "verbose": self.verbose,
-        }
-        if language is not None:
-            kwargs["language"] = language
-
         try:
+            detected_language = language
+            if detected_language is None:
+                with language_probe(audio_path) as probe_path:
+                    probe_options = whisper_decode_options(language=None, verbose=False)
+                    probe_options["path_or_hf_repo"] = self.spec.model
+                    probe_result: object = mlx_whisper.transcribe(str(probe_path), **probe_options)
+                if not isinstance(probe_result, dict) or not probe_result.get("language"):
+                    raise TranscriptionError(
+                        "MLX Whisper could not detect a language from the voiced audio probe."
+                    )
+                detected_language = str(probe_result["language"])
+
+            kwargs = whisper_decode_options(language=detected_language, verbose=self.verbose)
+            kwargs["path_or_hf_repo"] = self.spec.model
             result: object = mlx_whisper.transcribe(str(audio_path), **kwargs)
+        except TranscriptionError:
+            raise
         except Exception as exc:
             raise TranscriptionError(f"MLX Whisper failed for {audio_path.name}: {exc}") from exc
 
         if not isinstance(result, dict):
             raise TranscriptionError("MLX Whisper returned an unexpected result format.")
-        detected = result.get("language")
+        normalized = normalize_segments(result.get("segments"))
         return TranscriptionResult(
-            segments=normalize_segments(result.get("segments")),
-            detected_language=str(detected) if detected else None,
+            segments=filter_near_silent_segments(audio_path, normalized),
+            detected_language=detected_language,
         )

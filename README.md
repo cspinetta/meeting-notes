@@ -101,8 +101,12 @@ uv run meeting-notes process \
   --me-name Cris
 ```
 
-Language detection is automatic and Whisper transcribes rather than translates. Supply a hint only
-when useful:
+Language detection is automatic and Whisper transcribes rather than translates. For isolated OBS
+tracks, the backend detects language from a temporary 30-second excerpt beginning at the first
+sustained voiced region instead of assuming that the recording starts with speech. The excerpt is
+deleted immediately after detection. Decoder context is reset between Whisper windows, timestamped
+hallucination suppression is enabled, and text aligned to effectively silent PCM is discarded.
+Supply a language hint when the meeting language is already known:
 
 ```bash
 uv run meeting-notes process meeting.mkv --language es
@@ -175,7 +179,8 @@ output/meeting-2026-08-17/
 ```
 
 Existing valid transcripts are reused when the input fingerprint, backend, device, model, language,
-requested/resolved speaker mode, and microphone name match. The fingerprint combines file size,
+requested/resolved speaker mode, microphone name, and transcription-profile version match. The
+profile version prevents reuse after decoding behavior changes. The fingerprint combines file size,
 nanosecond modification time, and SHA-256 over the first and last 1 MiB, avoiding a full reread of a
 multi-gigabyte recording on every run. Different configurations receive numbered collision-safe
 directories such as `meeting-2026-08-17-2`. `--force` deliberately runs Whisper again in a new
@@ -237,4 +242,3 @@ exist; use `mixed` or `obs-3track` explicitly for unusual layouts.
 - Audio duplicated across OBS tracks may produce overlapping duplicate utterances; preserving both
 is safer than silently discarding potentially distinct speech.
 - CPU transcription on Linux can be substantially slower than CUDA or Apple Silicon MLX.
-
