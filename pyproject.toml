@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meeting-notes"
+version = "0.1.0"
+description = "Local OBS meeting transcription with platform-native Whisper backends"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{ name = "Cristian Ernesto Blas Spinetta" }]
+dependencies = [
+  "mlx-whisper>=0.4.2; sys_platform == 'darwin' and platform_machine == 'arm64'",
+  "openai-whisper>=20240930; sys_platform == 'linux'",
+]
+
+[project.urls]
+Homepage = "https://github.com/cspinetta/meeting-notes"
+Repository = "https://github.com/cspinetta/meeting-notes"
+Issues = "https://github.com/cspinetta/meeting-notes/issues"
+
+[project.scripts]
+meeting-notes = "meeting_notes.cli:main"
+
+[dependency-groups]
+dev = [
+  "mypy>=1.15",
+  "pytest>=8.3",
+  "ruff>=0.9",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meeting_notes"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]
